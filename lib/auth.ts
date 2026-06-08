@@ -32,7 +32,7 @@ export function logout() {
 }
 
 export async function login(email: string, senha: string): Promise<LoginResponse> {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://ewa-regretable-shanae.ngrok-free.dev'
   const res = await fetch(`${apiUrl}/api/auth/login`, {
     method:  'POST',
     headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
@@ -46,7 +46,7 @@ export async function login(email: string, senha: string): Promise<LoginResponse
 }
 
 export async function changePassword(senhaAtual: string, novaSenha: string): Promise<LoginResponse> {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://ewa-regretable-shanae.ngrok-free.dev'
   const token  = getToken()
   const res = await fetch(`${apiUrl}/api/auth/change-password`, {
     method:  'POST',

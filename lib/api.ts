@@ -1,7 +1,7 @@
 import { getToken } from './auth'
 import type { JobStatus, Task, SistemaStatus } from './types'
 
-const BASE = () => process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+const BASE = () => process.env.NEXT_PUBLIC_API_URL || 'https://ewa-regretable-shanae.ngrok-free.dev'
 
 async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken()
