@@ -13,15 +13,21 @@ export default function MidiaPage() {
   const [prompt, setPrompt]       = useState('')
   const [loading, setLoading]     = useState(false)
   const [erro, setErro]           = useState('')
-  const [resultado, setResultado] = useState<{ url?: string; base64?: string; tipo: string } | null>(null)
+  const [resultado, setResultado] = useState<{ url?: string; tipo: string } | null>(null)
 
   async function handleGerar(e: React.FormEvent) {
     e.preventDefault()
     if (!prompt.trim()) { setErro('Descreva o conteúdo desejado'); return }
     setErro(''); setLoading(true); setResultado(null)
     try {
-      const res = await gerarMidia({ tipo, estilo, formato_saida: formato, prompt } as any)
-      setResultado({ ...res, tipo })
+      // Montar FormData com os campos esperados pelo backend
+      const fd = new FormData()
+      fd.append('modo', 't2i')   // text-to-image
+      // Enriquecer prompt com estilo e tipo escolhidos
+      const promptFinal = `${prompt.trim()}. Estilo: ${estilo}. Tipo: ${tipo}. Formato: ${formato}.`
+      fd.append('prompt', promptFinal)
+      const res = await gerarMidia(fd)
+      setResultado({ url: res.data_url, tipo })
     } catch (err: any) {
       setErro(err.message || 'Erro ao gerar mídia')
     } finally {
@@ -31,7 +37,7 @@ export default function MidiaPage() {
 
   function baixar() {
     if (!resultado) return
-    const src = resultado.url || (resultado.base64 ? `data:image/png;base64,${resultado.base64}` : '')
+    const src = resultado.url || ''
     if (!src) return
     const a = document.createElement('a')
     a.href = src; a.download = `fks-midia-${Date.now()}.png`; a.click()
@@ -153,9 +159,9 @@ export default function MidiaPage() {
           )}
           {resultado && (
             <>
-              {(resultado.url || resultado.base64) ? (
+              {resultado.url ? (
                 <img
-                  src={resultado.url || `data:image/png;base64,${resultado.base64}`}
+                  src={resultado.url}
                   alt="Mídia gerada"
                   style={{ width:'100%', borderRadius:12, objectFit:'contain', maxHeight:360 }}
                 />

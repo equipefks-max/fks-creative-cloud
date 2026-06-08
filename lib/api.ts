@@ -15,7 +15,11 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.detail || `Erro ${res.status}`)
+    // FastAPI 422 returns detail as array of validation error objects
+    const detail = Array.isArray(err.detail)
+      ? err.detail.map((d: any) => d.msg || JSON.stringify(d)).join('; ')
+      : (err.detail || `Erro ${res.status}`)
+    throw new Error(detail)
   }
   return res.json()
 }
@@ -76,7 +80,10 @@ export async function gerarMidia(form: FormData): Promise<{
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.detail || 'Erro ao gerar mídia')
+    const detail = Array.isArray(err.detail)
+      ? err.detail.map((d: any) => d.msg || JSON.stringify(d)).join('; ')
+      : (err.detail || 'Erro ao gerar mídia')
+    throw new Error(detail)
   }
   return res.json()
 }
