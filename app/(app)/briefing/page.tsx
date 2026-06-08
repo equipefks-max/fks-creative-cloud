@@ -31,39 +31,28 @@ export default function BriefingPage() {
   const [briefingDragOver, setBriefingDragOver] = useState(false)
 
   const [animatedIdx, setAnimatedIdx] = useState(-1)
+  const animTargetRef = useRef(-1)
 
   const refInputRef      = useRef<HTMLInputElement>(null)
   const briefingInputRef = useRef<HTMLInputElement>(null)
   const pollingRef       = useRef<NodeJS.Timeout | null>(null)
-  const animTimerRef     = useRef<NodeJS.Timeout | null>(null)
 
-  // Avança animatedIdx step a step (400ms entre cada) quando jobStatus.etapa muda
+  // 1) Quando o status do job muda, atualiza o target
   useEffect(() => {
     if (!jobStatus) return
-    const targetIdx = ETAPAS_PIPELINE.findIndex(e => e.key === jobStatus.etapa)
-    if (targetIdx < 0) return
-
-    if (animTimerRef.current) clearTimeout(animTimerRef.current)
-
-    const advance = (current: number) => {
-      if (current >= targetIdx) {
-        setAnimatedIdx(targetIdx)
-        return
-      }
-      const next = current + 1
-      setAnimatedIdx(next)
-      animTimerRef.current = setTimeout(() => advance(next), 420)
-    }
-
-    setAnimatedIdx(prev => {
-      if (prev < targetIdx) {
-        animTimerRef.current = setTimeout(() => advance(prev), 200)
-        return prev
-      }
-      return targetIdx
-    })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    const idx = ETAPAS_PIPELINE.findIndex(e => e.key === jobStatus.etapa)
+    if (idx >= 0) animTargetRef.current = idx
   }, [jobStatus?.etapa])
+
+  // 2) Auto-avança animatedIdx até o target, um passo de cada vez
+  useEffect(() => {
+    if (animatedIdx >= animTargetRef.current) return
+    const delay = animatedIdx < 0 ? 250 : 450
+    const timer = setTimeout(() => {
+      setAnimatedIdx(prev => prev + 1)
+    }, delay)
+    return () => clearTimeout(timer)
+  }, [animatedIdx, jobStatus?.etapa])
 
   function toggleCheck(list: string[], setList: (v: string[]) => void, val: string) {
     setList(list.includes(val) ? list.filter(x => x !== val) : [...list, val])
