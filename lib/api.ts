@@ -8,6 +8,7 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
   const res = await fetch(`${BASE()}${path}`, {
     ...options,
     headers: {
+      'ngrok-skip-browser-warning': 'true',
       ...(options.headers || {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
@@ -25,7 +26,7 @@ export async function enviarBriefing(form: FormData): Promise<{ job_id: string }
   const token = getToken()
   const res = await fetch(`${BASE()}/api/briefing`, {
     method:  'POST',
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    headers: { 'ngrok-skip-browser-warning': 'true', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     body:    form,
   })
   if (!res.ok) {
@@ -70,7 +71,7 @@ export async function gerarMidia(form: FormData): Promise<{
   const token = getToken()
   const res = await fetch(`${BASE()}/api/midia`, {
     method:  'POST',
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    headers: { 'ngrok-skip-browser-warning': 'true', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     body:    form,
   })
   if (!res.ok) {
