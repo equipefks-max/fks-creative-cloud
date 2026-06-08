@@ -1,5 +1,5 @@
 'use client'
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { enviarBriefing, getJobStatus } from '@/lib/api'
 import { CLIENTES, EQUIPE, FORMATOS, OBJETIVOS, ETAPAS_PIPELINE } from '@/lib/types'
 
@@ -30,9 +30,40 @@ export default function BriefingPage() {
   const [briefingArquivo, setBriefingArquivo] = useState<File | null>(null)
   const [briefingDragOver, setBriefingDragOver] = useState(false)
 
+  const [animatedIdx, setAnimatedIdx] = useState(-1)
+
   const refInputRef      = useRef<HTMLInputElement>(null)
   const briefingInputRef = useRef<HTMLInputElement>(null)
   const pollingRef       = useRef<NodeJS.Timeout | null>(null)
+  const animTimerRef     = useRef<NodeJS.Timeout | null>(null)
+
+  // Avança animatedIdx step a step (400ms entre cada) quando jobStatus.etapa muda
+  useEffect(() => {
+    if (!jobStatus) return
+    const targetIdx = ETAPAS_PIPELINE.findIndex(e => e.key === jobStatus.etapa)
+    if (targetIdx < 0) return
+
+    if (animTimerRef.current) clearTimeout(animTimerRef.current)
+
+    const advance = (current: number) => {
+      if (current >= targetIdx) {
+        setAnimatedIdx(targetIdx)
+        return
+      }
+      const next = current + 1
+      setAnimatedIdx(next)
+      animTimerRef.current = setTimeout(() => advance(next), 420)
+    }
+
+    setAnimatedIdx(prev => {
+      if (prev < targetIdx) {
+        animTimerRef.current = setTimeout(() => advance(prev), 200)
+        return prev
+      }
+      return targetIdx
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobStatus?.etapa])
 
   function toggleCheck(list: string[], setList: (v: string[]) => void, val: string) {
     setList(list.includes(val) ? list.filter(x => x !== val) : [...list, val])
@@ -96,7 +127,7 @@ export default function BriefingPage() {
     }
   }
 
-  const etapaAtualIdx = ETAPAS_PIPELINE.findIndex(e => e.key === jobStatus?.etapa)
+  const etapaAtualIdx = animatedIdx
 
   // ── Tela de progresso ────────────────────────────────────────────────────────
   if (etapa === 'progress' || etapa === 'concluido' || etapa === 'erro') {
@@ -117,21 +148,23 @@ export default function BriefingPage() {
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
               {ETAPAS_PIPELINE.map((ep, idx) => {
-                const done    = etapa === 'concluido' || idx < etapaAtualIdx
-                const current = idx === etapaAtualIdx && etapa === 'progress'
-                const hasErro = etapa === 'erro' && current
+                const done    = idx < etapaAtualIdx || (idx === etapaAtualIdx && jobStatus?.etapa === 'concluido')
+                const current = idx === etapaAtualIdx && jobStatus?.etapa !== 'concluido' && etapa !== 'erro'
+                const hasErro = etapa === 'erro' && idx === etapaAtualIdx
                 return (
                   <div key={ep.key} style={{ display:'flex', alignItems:'center', gap:12 }}>
-                    <div style={{
+                    <div className={current ? 'step-current' : ''}
+                      style={{
                       width:24, height:24, borderRadius:'50%', flexShrink:0,
                       display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700,
+                      transition: 'background 0.4s, border-color 0.4s, color 0.4s',
                       background: hasErro ? 'rgba(239,68,68,0.2)' : done ? 'rgba(34,197,94,0.2)' : current ? 'rgba(245,158,11,0.2)' : 'rgba(255,255,255,0.06)',
                       border: `1px solid ${hasErro ? 'rgba(239,68,68,0.4)' : done ? 'rgba(34,197,94,0.4)' : current ? 'rgba(245,158,11,0.4)' : 'rgba(255,255,255,0.1)'}`,
                       color: hasErro ? '#f87171' : done ? '#22c55e' : current ? '#f59e0b' : '#4b5563',
                     }}>
                       {done ? '✓' : current ? (hasErro ? '✗' : '…') : idx + 1}
                     </div>
-                    <span style={{ fontSize:13, color: done ? '#22c55e' : current ? (hasErro ? '#f87171' : '#f59e0b') : '#6b7280' }}>
+                    <span style={{ fontSize:13, transition:'color 0.4s', color: done ? '#22c55e' : current ? (hasErro ? '#f87171' : '#f59e0b') : '#6b7280' }}>
                       {ep.label}
                     </span>
                   </div>
@@ -165,7 +198,7 @@ export default function BriefingPage() {
             </div>
           )}
 
-          <button onClick={() => { setEtapa('form'); setReferencias([]); setResponsaveis([]); setFormatos([]); setBriefingArquivo(null); setBriefingModo('texto') }}
+          <button onClick={() => { setEtapa('form'); setReferencias([]); setResponsaveis([]); setFormatos([]); setBriefingArquivo(null); setBriefingModo('texto'); setJobStatus(null); setAnimatedIdx(-1) }}
             className="btn-primary"
             style={{ padding:'10px 24px', borderRadius:12, fontSize:14, border:'none' }}>
             Novo Briefing
