@@ -71,6 +71,7 @@ export async function gerarMidia(form: FormData): Promise<{
   arquivo?: string
   data_url?: string
   erro?: string
+  [key: string]: unknown
 }> {
   const token = getToken()
   const res = await fetch(`${BASE()}/api/midia`, {

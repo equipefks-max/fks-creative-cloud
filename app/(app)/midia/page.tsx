@@ -27,6 +27,9 @@ export default function MidiaPage() {
       const promptFinal = `${prompt.trim()}. Estilo: ${estilo}. Tipo: ${tipo}. Formato: ${formato}.`
       fd.append('prompt', promptFinal)
       const res = await gerarMidia(fd)
+      if (!res.sucesso || !res.data_url) {
+        throw new Error((res as any).erro || 'Servidor não retornou imagem')
+      }
       setResultado({ url: res.data_url, tipo })
     } catch (err: any) {
       setErro(err.message || 'Erro ao gerar mídia')
