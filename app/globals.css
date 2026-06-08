@@ -1,0 +1,83 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --amber: #f59e0b;
+  --cyan:  #06b6d4;
+  --bg:    #0a0a0f;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  background: #0a0a0f;
+  color: #d1d5db;
+  font-family: 'Inter', -apple-system, sans-serif;
+}
+
+.glass {
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.glass-hover:hover {
+  background: rgba(255,255,255,0.07) !important;
+  border-color: rgba(245,158,11,0.3) !important;
+}
+.input-glass {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #e5e7eb;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.input-glass:focus { border-color: rgba(245,158,11,0.5); }
+.input-glass::placeholder { color: #4b5563; }
+
+.btn-primary {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #0a0a0f; font-weight: 600;
+  transition: all 0.15s; cursor: pointer;
+}
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(245,158,11,0.4); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+.status-dot { width:8px; height:8px; border-radius:50%; display:inline-block; flex-shrink:0; }
+.dot-green { background:#22c55e; box-shadow:0 0 6px #22c55e; }
+.dot-red   { background:#ef4444; box-shadow:0 0 6px #ef4444; }
+.dot-amber { background:#f59e0b; box-shadow:0 0 6px #f59e0b; }
+
+select option { background: #1a1a2e; }
+
+/* scrollbar */
+::-webkit-scrollbar { width:6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius:3px; }
+
+/* original Next.js vars below */
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
