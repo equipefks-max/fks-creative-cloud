@@ -129,10 +129,14 @@ export default function HistoricoPage() {
             </div>
           )}
           {!loading && slice.map((t, i) => {
-            const ss = statusStyle(t.status?.status || t.status || '')
-            const assignees = Array.isArray(t.assignees) ? t.assignees.map((a: any) => a.username || a.name || a).join(', ') : ''
-            const due = t.due_date ? new Date(Number(t.due_date)).toLocaleDateString('pt-BR') : '—'
-            const clienteLabel = CLIENTES.find(c => t.name?.toLowerCase().includes(c.value) || t.list?.name?.toLowerCase().includes(c.value))?.label || '—'
+            const statusStr = typeof t.status === 'string' ? t.status : (t.status as any)?.status || ''
+            const ss = statusStyle(statusStr)
+            const assignees = Array.isArray(t.assignees)
+              ? t.assignees.map((a: any) => typeof a === 'string' ? a : (a.username || a.name || '')).filter(Boolean).join(', ')
+              : ''
+            const prazo = t.prazo ? new Date(Number(t.prazo)).toLocaleDateString('pt-BR') : '—'
+            const clienteLabel = CLIENTES.find(c => c.value === t.cliente)?.label
+              || (t.cliente ? t.cliente.charAt(0).toUpperCase() + t.cliente.slice(1) : '—')
             return (
               <div key={t.id || i}
                 style={{ display:'grid', gridTemplateColumns:'3fr 1.2fr 1fr 1.2fr 1fr',
@@ -146,22 +150,22 @@ export default function HistoricoPage() {
                       style={{ color:'#e5e7eb', textDecoration:'none', fontWeight:500 }}
                       onMouseEnter={e => ((e.target as HTMLElement).style.color='#f59e0b')}
                       onMouseLeave={e => ((e.target as HTMLElement).style.color='#e5e7eb')}>
-                      {t.name}
+                      {t.nome}
                     </a>
                   ) : (
-                    <span style={{ color:'#e5e7eb', fontWeight:500 }}>{t.name}</span>
+                    <span style={{ color:'#e5e7eb', fontWeight:500 }}>{t.nome}</span>
                   )}
                 </div>
                 <span style={{ color:'#9ca3af' }}>{clienteLabel}</span>
                 <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center',
                                padding:'3px 10px', borderRadius:99, fontSize:11, fontWeight:500,
                                background: ss.bg, color: ss.color }}>
-                  {t.status?.status || t.status || '—'}
+                  {statusStr || '—'}
                 </span>
                 <span style={{ color:'#9ca3af', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
                   {assignees || '—'}
                 </span>
-                <span style={{ color:'#6b7280', fontSize:12 }}>{due}</span>
+                <span style={{ color:'#6b7280', fontSize:12 }}>{prazo}</span>
               </div>
             )
           })}

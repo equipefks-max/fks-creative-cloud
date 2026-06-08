@@ -27,9 +27,11 @@ export interface JobStatus {
 export interface Task {
   id: string
   nome: string
+  cliente: string
   status: string
   assignees: string[]
   data_criacao: string
+  prazo: string
   url: string
   tags: string[]
 }
