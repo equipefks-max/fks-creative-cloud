@@ -36,7 +36,7 @@ export default function HistoricoPage() {
     setLoading(true); setErro('')
     try {
       const data = await getTasks({ cliente: filtroCliente, status: filtroStatus })
-      setTasks(Array.isArray(data) ? data : [])
+      setTasks(Array.isArray(data?.tasks) ? data.tasks : [])
       setPagina(1)
     } catch (e: any) {
       setErro(e.message || 'Erro ao carregar histórico')
@@ -48,7 +48,7 @@ export default function HistoricoPage() {
   useEffect(() => { carregar() }, [carregar])
 
   const filtrado = tasks.filter(t =>
-    !busca || t.name?.toLowerCase().includes(busca.toLowerCase())
+    !busca || t.nome?.toLowerCase().includes(busca.toLowerCase())
   )
   const total    = filtrado.length
   const paginas  = Math.max(1, Math.ceil(total / POR_PAGINA))
