@@ -167,15 +167,14 @@ export default function Sidebar() {
         background: '#0205158c', backdropFilter: 'blur(40px)', zIndex: 20,
       }}>
         {/* Logo */}
-        <div style={{ padding:'8px 8px 0', display:'flex', flexDirection:'column', alignItems:'flex-start', gap:8 }}>
-          <div style={{ display:'grid', placeItems:'center', width:44, height:44, borderRadius:16,
-                        background:'var(--gradient-primary)', boxShadow:'var(--shadow-glow)',
-                        fontFamily:'var(--font-display)', fontSize:18, fontWeight:700, color:'#fff' }}>F</div>
-          <div>
-            <div style={{ fontFamily:'var(--font-display)', fontSize:16, fontWeight:600, lineHeight:1 }}>FKS</div>
-            <div style={{ marginTop:4, fontSize:10, fontWeight:600, textTransform:'uppercase',
-                          letterSpacing:'.18em', color:'var(--muted-foreground)' }}>Creative Cloud</div>
-          </div>
+        <div style={{ padding:'8px 8px 0' }}>
+          <img
+            src="/fks-creative-cloud/logo.png"
+            alt="FKS"
+            style={{ width: 100, height: 'auto', display: 'block' }}
+          />
+          <div style={{ marginTop:6, fontSize:10, fontWeight:600, textTransform:'uppercase',
+                        letterSpacing:'.18em', color:'var(--muted-foreground)' }}>Creative Cloud</div>
         </div>
 
         {/* Nav */}
