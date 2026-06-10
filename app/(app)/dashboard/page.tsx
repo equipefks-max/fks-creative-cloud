@@ -63,77 +63,75 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <header style={{ padding:'16px 32px', borderBottom:'1px solid rgba(255,255,255,0.05)',
-                       background:'rgba(10,10,15,0.85)', backdropFilter:'blur(12px)',
-                       position:'sticky', top:0, zIndex:10,
-                       display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-        <div>
-          <div style={{ color:'#fff', fontSize:18, fontWeight:600 }}>Dashboard</div>
-          <div style={{ color:'#6b7280', fontSize:12, marginTop:2 }}>
-            Status do sistema em tempo real
+      <header className="topbar">
+        <div className="topbar-inner">
+          <div style={{ fontSize:14, color:'var(--muted-foreground)' }}>
+            Workspace <span style={{ opacity:.4, margin:'0 6px' }}>/</span>
+            <span style={{ color:'var(--foreground)' }}>Dashboard</span>
           </div>
-        </div>
-        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-          {lastUpdate && (
-            <span style={{ fontSize:11, color:'#374151' }}>
-              Atualizado {lastUpdate.toLocaleTimeString('pt-BR')}
-            </span>
-          )}
-          <button onClick={carregar} disabled={loading}
-            style={{ padding:'8px 14px', borderRadius:10, fontSize:12, cursor:'pointer',
-                     border:'1px solid rgba(255,255,255,0.1)', background:'rgba(255,255,255,0.04)',
-                     color: loading ? '#374151' : '#9ca3af' }}>
-            {loading ? '↻ ...' : '↻ Atualizar'}
-          </button>
+          <div style={{ display:'flex', alignItems:'center', gap:12, marginLeft:'auto' }}>
+            {lastUpdate && (
+              <span style={{ fontSize:11, color:'var(--muted-foreground)' }}>
+                Atualizado {lastUpdate.toLocaleTimeString('pt-BR')}
+              </span>
+            )}
+            <button onClick={carregar} disabled={loading} className="btn-ghost"
+              style={{ padding:'6px 14px', fontSize:12 }}>
+              {loading ? '↻ ...' : '↻ Atualizar'}
+            </button>
+          </div>
         </div>
       </header>
 
-      <div style={{ padding:32 }}>
+      <div style={{ padding:'24px 32px 60px' }}>
+        <div style={{ display:'flex', alignItems:'baseline', gap:14, marginBottom:24 }}>
+          <h1 style={{ fontFamily:'var(--font-display)', fontWeight:600, fontSize:'clamp(1.5rem,3vw,2rem)', letterSpacing:'-.02em', lineHeight:1 }}>
+            <span className="kinetic">Dash</span><span className="kinetic-blue">board</span>
+          </h1>
+          <span style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'.18em', color:'var(--primary-glow)' }}>Visão geral</span>
+        </div>
 
         {/* Cards de visão geral */}
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(4, 1fr)', gap:16, marginBottom:28 }}>
+        <div className="bgrid" style={{ marginBottom:28 }}>
           {[
             {
               label:'Serviços ativos',
               valor: loading ? '...' : `${onlineCount}/${total}`,
-              cor: onlineCount === total ? '#22c55e' : onlineCount > 0 ? '#f59e0b' : '#f87171',
+              cor: onlineCount === total ? 'var(--success)' : onlineCount > 0 ? '#f59e0b' : '#f87171',
               icon:'⚡',
             },
             {
               label:'ngrok',
               valor: loading ? '...' : (status?.ngrok ? 'Online' : 'Offline'),
-              cor: status?.ngrok ? '#22c55e' : '#f87171',
+              cor: status?.ngrok ? 'var(--success)' : '#f87171',
               icon:'🌐',
             },
             {
               label:'API',
               valor: loading ? '...' : (status?.api_server ? 'Online' : 'Offline'),
-              cor: status?.api_server ? '#22c55e' : '#f87171',
+              cor: status?.api_server ? 'var(--success)' : '#f87171',
               icon:'🔌',
             },
             {
               label:'Webhook',
               valor: loading ? '...' : (status?.webhook ? 'Online' : 'Offline'),
-              cor: status?.webhook ? '#22c55e' : '#f87171',
+              cor: status?.webhook ? 'var(--success)' : '#f87171',
               icon:'📡',
             },
           ].map(card => (
-            <div key={card.label}
-              style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.07)',
-                       borderRadius:14, padding:'20px 20px 16px',
-                       display:'flex', flexDirection:'column', gap:8 }}>
+            <div key={card.label} className="bento md-3"
+              style={{ padding:'20px 20px 16px', display:'flex', flexDirection:'column', gap:8 }}>
               <div style={{ fontSize:20 }}>{card.icon}</div>
               <div style={{ fontSize:22, fontWeight:700, color: card.cor }}>{card.valor}</div>
-              <div style={{ fontSize:12, color:'#6b7280' }}>{card.label}</div>
+              <div style={{ fontSize:12, color:'var(--muted-foreground)' }}>{card.label}</div>
             </div>
           ))}
         </div>
 
         {/* Detalhes dos serviços */}
-        <div style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.06)',
-                      borderRadius:16, overflow:'hidden', marginBottom:28 }}>
+        <div className="bento" style={{ overflow:'hidden', marginBottom:28 }}>
           <div style={{ padding:'14px 24px', borderBottom:'1px solid rgba(255,255,255,0.05)',
-                        fontSize:13, fontWeight:600, color:'#9ca3af' }}>
+                        fontSize:13, fontWeight:600, color:'var(--muted-foreground)' }}>
             Processos do sistema
           </div>
           {SERVICOS.map((s, i) => (
@@ -155,16 +153,15 @@ export default function DashboardPage() {
 
         {/* Informações do ambiente */}
         {status?.ngrok_url && (
-          <div style={{ background:'rgba(6,182,212,0.04)', border:'1px solid rgba(6,182,212,0.12)',
-                        borderRadius:14, padding:'16px 20px' }}>
-            <div style={{ fontSize:12, fontWeight:600, color:'#06b6d4', marginBottom:8 }}>
+          <div className="bento" style={{ padding:'16px 20px', marginBottom:20,
+                        background:'rgba(57,125,255,0.04)', borderColor:'rgba(57,125,255,0.2)' }}>
+            <div style={{ fontSize:12, fontWeight:600, color:'var(--primary-glow)', marginBottom:8 }}>
               URL pública (ngrok)
             </div>
-            <div style={{ fontFamily:'monospace', fontSize:13, color:'#a5f3fc',
-                          wordBreak:'break-all' }}>
+            <div style={{ fontFamily:'monospace', fontSize:13, color:'#c7d8ff', wordBreak:'break-all' }}>
               {status.ngrok_url}
             </div>
-            <div style={{ fontSize:11, color:'#164e63', marginTop:6 }}>
+            <div style={{ fontSize:11, color:'var(--muted-foreground)', marginTop:6, opacity:.6 }}>
               Atualizar o NEXT_PUBLIC_API_URL no .env.local caso a URL mude
             </div>
           </div>

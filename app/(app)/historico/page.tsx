@@ -56,16 +56,25 @@ export default function HistoricoPage() {
 
   return (
     <div>
-      <header style={{ padding:'16px 32px', borderBottom:'1px solid rgba(255,255,255,0.05)',
-                       background:'rgba(10,10,15,0.85)', backdropFilter:'blur(12px)',
-                       position:'sticky', top:0, zIndex:10 }}>
-        <div style={{ color:'#fff', fontSize:18, fontWeight:600 }}>Histórico de Tasks</div>
-        <div style={{ color:'#6b7280', fontSize:12, marginTop:2 }}>
-          {total} task{total !== 1 ? 's' : ''} encontrada{total !== 1 ? 's' : ''}
+      <header className="topbar">
+        <div className="topbar-inner">
+          <div style={{ fontSize:14, color:'var(--muted-foreground)' }}>
+            Workspace <span style={{ opacity:.4, margin:'0 6px' }}>/</span>
+            <span style={{ color:'var(--foreground)' }}>Histórico</span>
+          </div>
+          <div className="online-pill"><span className="pulse-dot" /><span>Sistema online</span></div>
         </div>
       </header>
 
-      <div style={{ padding:'24px 32px' }}>
+      <div style={{ padding:'24px 32px 60px' }}>
+        <div style={{ display:'flex', alignItems:'baseline', gap:14, marginBottom:24 }}>
+          <h1 style={{ fontFamily:'var(--font-display)', fontWeight:600, fontSize:'clamp(1.5rem,3vw,2rem)', letterSpacing:'-.02em', lineHeight:1 }}>
+            <span className="kinetic">Histórico</span> <span className="kinetic-blue">de Tasks</span>
+          </h1>
+          <span style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'.18em', color:'var(--primary-glow)' }}>
+            {total} task{total !== 1 ? 's' : ''}
+          </span>
+        </div>
         {/* Filtros */}
         <div style={{ display:'flex', gap:12, marginBottom:20, flexWrap:'wrap' }}>
           <input placeholder="Buscar por nome..." value={busca} onChange={e => setBusca(e.target.value)}
@@ -99,8 +108,7 @@ export default function HistoricoPage() {
         </div>
 
         {/* Tabela */}
-        <div style={{ background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.06)',
-                      borderRadius:16, overflow:'hidden' }}>
+        <div className="bento" style={{ overflow:'auto' }}>
           {/* Cabeçalho */}
           <div style={{ display:'grid', gridTemplateColumns:'3fr 1.2fr 1fr 1.2fr 1fr',
                         padding:'10px 20px', borderBottom:'1px solid rgba(255,255,255,0.06)',

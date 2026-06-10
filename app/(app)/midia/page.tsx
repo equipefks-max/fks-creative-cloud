@@ -48,21 +48,29 @@ export default function MidiaPage() {
 
   return (
     <div>
-      <header style={{ padding:'16px 32px', borderBottom:'1px solid rgba(255,255,255,0.05)',
-                       background:'rgba(10,10,15,0.85)', backdropFilter:'blur(12px)',
-                       position:'sticky', top:0, zIndex:10 }}>
-        <div style={{ color:'#fff', fontSize:18, fontWeight:600 }}>Gerar Mídia</div>
-        <div style={{ color:'#6b7280', fontSize:12, marginTop:2 }}>
-          Geração de imagens via NanaBananaba
+      <header className="topbar">
+        <div className="topbar-inner">
+          <div style={{ fontSize:14, color:'var(--muted-foreground)' }}>
+            Workspace <span style={{ opacity:.4, margin:'0 6px' }}>/</span>
+            <span style={{ color:'var(--foreground)' }}>Gerar Mídia</span>
+          </div>
+          <div className="online-pill"><span className="pulse-dot" /><span>Sistema online</span></div>
         </div>
       </header>
 
-      <div style={{ padding:32, display:'grid', gridTemplateColumns:'1fr 1fr', gap:24, maxWidth:900 }}>
+      <div style={{ padding:'24px 32px 60px' }}>
+        <div style={{ display:'flex', alignItems:'baseline', gap:14, marginBottom:24 }}>
+          <h1 style={{ fontFamily:'var(--font-display)', fontWeight:600, fontSize:'clamp(1.5rem,3vw,2rem)', letterSpacing:'-.02em', lineHeight:1 }}>
+            <span className="kinetic">Gerar</span> <span className="kinetic-blue">Mídia</span>
+          </h1>
+          <span style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'.18em', color:'var(--primary-glow)' }}>IA Generativa</span>
+        </div>
+
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:24, maxWidth:900 }}>
 
         {/* Painel esquerdo — formulário */}
         <form onSubmit={handleGerar}>
-          <div style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)',
-                        borderRadius:16, padding:24, display:'flex', flexDirection:'column', gap:18 }}>
+          <div className="bento p7" style={{ display:'flex', flexDirection:'column', gap:18 }}>
 
             {/* Tipo de conteúdo */}
             <div>
@@ -72,10 +80,7 @@ export default function MidiaPage() {
               <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
                 {TIPOS.map(t => (
                   <button key={t} type="button" onClick={() => setTipo(t)}
-                    style={{ padding:'6px 12px', borderRadius:99, fontSize:12, cursor:'pointer',
-                             border: tipo===t ? '1px solid rgba(245,158,11,0.4)' : '1px solid rgba(255,255,255,0.08)',
-                             background: tipo===t ? 'rgba(245,158,11,0.1)' : 'rgba(255,255,255,0.04)',
-                             color: tipo===t ? '#f59e0b' : '#6b7280' }}>
+                    className={`chip${tipo===t?' active':''}`}>
                     {t}
                   </button>
                 ))}
@@ -90,10 +95,7 @@ export default function MidiaPage() {
               <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
                 {ESTILOS.map(s => (
                   <button key={s} type="button" onClick={() => setEstilo(s)}
-                    style={{ padding:'6px 12px', borderRadius:99, fontSize:12, cursor:'pointer',
-                             border: estilo===s ? '1px solid rgba(6,182,212,0.4)' : '1px solid rgba(255,255,255,0.08)',
-                             background: estilo===s ? 'rgba(6,182,212,0.1)' : 'rgba(255,255,255,0.04)',
-                             color: estilo===s ? '#06b6d4' : '#6b7280' }}>
+                    className={`chip${estilo===s?' active':''}`}>
                     {s}
                   </button>
                 ))}
@@ -144,8 +146,7 @@ export default function MidiaPage() {
         </form>
 
         {/* Painel direito — resultado */}
-        <div style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)',
-                      borderRadius:16, padding:24, display:'flex', flexDirection:'column', alignItems:'center',
+        <div className="bento p7" style={{ display:'flex', flexDirection:'column', alignItems:'center',
                       justifyContent: resultado || loading ? 'flex-start' : 'center', minHeight:400 }}>
           {!resultado && !loading && (
             <div style={{ textAlign:'center', color:'#374151' }}>
@@ -187,6 +188,7 @@ export default function MidiaPage() {
             </>
           )}
         </div>
+      </div>
       </div>
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
