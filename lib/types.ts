@@ -53,6 +53,7 @@ export const CLIENTES = [
   { value: 'desmodus',      label: 'Desmodus' },
   { value: 'meus momentos', label: 'Meus Momentos' },
   { value: 'mutuo studio',  label: 'Mútuo Studio' },
+  { value: 'solid gear',    label: 'Solid Gear' },
 ]
 
 export const EQUIPE = [
@@ -79,7 +80,6 @@ export const OBJETIVOS = [
 export const ETAPAS_PIPELINE = [
   { key: 'drive',    label: 'Base de Conhecimento' },
   { key: 'copy',     label: 'Geração de Copy' },
-  { key: 'canvas',   label: 'Moodboard Visual' },
   { key: 'revisao',  label: 'Revisão' },
   { key: 'clickup',  label: 'Criando Task' },
   { key: 'prompts',  label: 'Prompts de Imagem' },

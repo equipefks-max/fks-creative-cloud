@@ -94,6 +94,7 @@ export default function HistoricoPage() {
             className="input-glass"
             style={{ borderRadius:10, padding:'10px 14px', fontSize:13, minWidth:160 }}>
             <option value="">Todos os status</option>
+            <option value="ativar">Ativar</option>
             <option value="em andamento">Em andamento</option>
             <option value="revisão">Revisão</option>
             <option value="concluído">Concluído</option>

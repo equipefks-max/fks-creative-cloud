@@ -125,6 +125,7 @@ button { cursor: pointer; border: none; background: none; }
 }
 .input-glass:focus { border-color: #397dff80; }
 .input-glass::placeholder { color: #ffffff33; }
+.input-glass option { background: #0f172a; color: #e5e7eb; }
 
 .select-big {
   width: 100%; appearance: none; background: transparent; border: none; outline: none;
