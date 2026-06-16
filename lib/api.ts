@@ -66,6 +66,31 @@ export async function getSistemaStatus(): Promise<SistemaStatus> {
 
 // ── Mídia ─────────────────────────────────────────────────────────────────────
 
+export async function gerarPrompt(form: FormData): Promise<{
+  sucesso: boolean
+  prompt?: string
+  negative_prompt?: string
+  modo_detectado?: string
+  aspect_ratio?: string
+  erro?: string
+  [key: string]: unknown
+}> {
+  const token = getToken()
+  const res = await fetch(`${BASE()}/api/gerar-prompt`, {
+    method:  'POST',
+    headers: { 'ngrok-skip-browser-warning': 'true', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body:    form,
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    const detail = Array.isArray(err.detail)
+      ? err.detail.map((d: any) => d.msg).join(', ')
+      : err.detail || 'Erro ao gerar prompt'
+    throw new Error(detail)
+  }
+  return res.json()
+}
+
 export async function gerarMidia(form: FormData): Promise<{
   sucesso: boolean
   arquivo?: string

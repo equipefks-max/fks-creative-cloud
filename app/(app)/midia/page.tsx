@@ -1,9 +1,8 @@
 'use client'
 import { useState, useRef, useCallback } from 'react'
-import { gerarMidia } from '@/lib/api'
+import { gerarPrompt, gerarMidia } from '@/lib/api'
+import { CLIENTES } from '@/lib/types'
 
-const TIPOS = ['Imagem feed', 'Stories', 'Carrossel', 'Reels thumbnail', 'TikTok thumbnail']
-const ESTILOS = ['Realista', 'Flat design', 'Minimalista', 'Fotográfico', 'Ilustração']
 const FORMATOS_SAIDA = ['1:1 (Feed)', '9:16 (Stories/Reels)', '16:9 (YouTube)', '4:5 (Feed)']
 
 interface Referencia {
@@ -12,31 +11,37 @@ interface Referencia {
 }
 
 export default function MidiaPage() {
-  const [modo, setModo]           = useState<'t2i' | 'i2i'>('t2i')
-  const [tipo, setTipo]           = useState(TIPOS[0])
-  const [estilo, setEstilo]       = useState(ESTILOS[0])
+  // Passo 1 — entrada
+  const [cliente, setCliente]     = useState('')
   const [formato, setFormato]     = useState(FORMATOS_SAIDA[0])
-  const [prompt, setPrompt]       = useState('')
-  const [refs, setRefs]           = useState<Referencia[]>([])
-  const [dragOver, setDragOver]   = useState(false)
-  const [loading, setLoading]     = useState(false)
-  const [erro, setErro]           = useState('')
-  const [resultado, setResultado] = useState<{ url?: string; tipo: string; promptMelhorado?: string } | null>(null)
+  const [descricao, setDescricao] = useState('')
 
+  // Passo 2 — prompt gerado (editável)
+  const [promptEditavel, setPromptEditavel] = useState('')
+  const [negativoGerado, setNegativoGerado] = useState('')
+  const [modoDetectado, setModoDetectado]   = useState<'t2i' | 'i2i' | 'comp' | 'render' | string>('t2i')
+  const [promptPronto, setPromptPronto]     = useState(false)
+
+  // Referências de imagem (i2i / comp)
+  const [refs, setRefs]         = useState<Referencia[]>([])
+  const [dragOver, setDragOver] = useState(false)
   const inputFileRef = useRef<HTMLInputElement>(null)
 
+  // Estados de loading e resultado
+  const [loadingPrompt, setLoadingPrompt] = useState(false)
+  const [loadingImagem, setLoadingImagem] = useState(false)
+  const [erro, setErro]                   = useState('')
+  const [resultado, setResultado]         = useState<{ url: string } | null>(null)
+
+  // ── Upload de referências ──────────────────────────────────────────────────
   const adicionarArquivos = useCallback((files: FileList | File[]) => {
     const arr = Array.from(files).filter(f => f.type.startsWith('image/'))
     if (!arr.length) return
-    const novos: Referencia[] = arr.map(f => ({ file: f, preview: URL.createObjectURL(f) }))
-    setRefs(prev => [...prev, ...novos])
+    setRefs(prev => [...prev, ...arr.map(f => ({ file: f, preview: URL.createObjectURL(f) }))])
   }, [])
 
   function removerRef(idx: number) {
-    setRefs(prev => {
-      URL.revokeObjectURL(prev[idx].preview)
-      return prev.filter((_, i) => i !== idx)
-    })
+    setRefs(prev => { URL.revokeObjectURL(prev[idx].preview); return prev.filter((_, i) => i !== idx) })
   }
 
   function onDrop(e: React.DragEvent) {
@@ -44,36 +49,59 @@ export default function MidiaPage() {
     adicionarArquivos(e.dataTransfer.files)
   }
 
-  async function handleGerar(e: React.FormEvent) {
+  // ── Passo 1: Gerar Prompt ─────────────────────────────────────────────────
+  async function handleGerarPrompt(e: React.FormEvent) {
     e.preventDefault()
-    if (!prompt.trim()) { setErro('Descreva o conteúdo desejado'); return }
-    if (modo === 'i2i' && refs.length === 0) { setErro('Adicione ao menos uma imagem de referência'); return }
-    setErro(''); setLoading(true); setResultado(null)
+    if (!descricao.trim()) { setErro('Descreva o que você quer gerar'); return }
+    setErro(''); setLoadingPrompt(true); setPromptPronto(false); setResultado(null)
     try {
       const fd = new FormData()
-      fd.append('modo', modo)
-      fd.append('prompt', `${prompt.trim()}. Estilo: ${estilo}. Tipo: ${tipo}.`)
+      fd.append('descricao', descricao.trim())
+      fd.append('cliente', cliente)
       fd.append('formato', formato)
-      if (modo === 'i2i') {
-        refs.forEach(r => fd.append('referencias', r.file))
-      }
-      const res = await gerarMidia(fd)
-      if (!res.sucesso || !res.data_url) {
-        throw new Error((res as any).erro || 'Servidor não retornou imagem')
-      }
-      setResultado({ url: res.data_url, tipo, promptMelhorado: res.prompt_melhorado })
+      const res = await gerarPrompt(fd)
+      if (!res.sucesso || !res.prompt) throw new Error(res.erro || 'Prompt não retornado')
+      setPromptEditavel(res.prompt)
+      setNegativoGerado(res.negative_prompt || '')
+      setModoDetectado(res.modo_detectado || 't2i')
+      setPromptPronto(true)
     } catch (err: any) {
-      setErro(err.message || 'Erro ao gerar mídia')
+      setErro(err.message || 'Erro ao gerar prompt')
     } finally {
-      setLoading(false)
+      setLoadingPrompt(false)
+    }
+  }
+
+  // ── Passo 2: Gerar Imagem ─────────────────────────────────────────────────
+  async function handleGerarImagem(e: React.FormEvent) {
+    e.preventDefault()
+    if (!promptEditavel.trim()) { setErro('O prompt não pode estar vazio'); return }
+    const precisaRef = modoDetectado === 'i2i' || modoDetectado === 'comp'
+    if (precisaRef && refs.length === 0) { setErro('Adicione ao menos uma imagem de referência'); return }
+    setErro(''); setLoadingImagem(true); setResultado(null)
+    try {
+      const fd = new FormData()
+      fd.append('modo', modoDetectado === 'comp' ? 'i2i' : modoDetectado)
+      fd.append('prompt', promptEditavel.trim())
+      fd.append('formato', formato)
+      refs.forEach(r => fd.append('referencias', r.file))
+      const res = await gerarMidia(fd)
+      if (!res.sucesso || !res.data_url) throw new Error((res as any).erro || 'Sem imagem retornada')
+      setResultado({ url: res.data_url })
+    } catch (err: any) {
+      setErro(err.message || 'Erro ao gerar imagem')
+    } finally {
+      setLoadingImagem(false)
     }
   }
 
   function baixar() {
-    if (!resultado?.url) return
+    if (!resultado) return
     const a = document.createElement('a')
     a.href = resultado.url; a.download = `fks-midia-${Date.now()}.png`; a.click()
   }
+
+  const precisaRef = modoDetectado === 'i2i' || modoDetectado === 'comp'
 
   return (
     <div>
@@ -95,238 +123,225 @@ export default function MidiaPage() {
           <span style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'.18em', color:'var(--primary-glow)' }}>IA Generativa</span>
         </div>
 
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:24, maxWidth:900 }}>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:24, maxWidth:960 }}>
 
-          {/* Painel esquerdo — formulário */}
-          <form onSubmit={handleGerar}>
-            <div className="bento p7" style={{ display:'flex', flexDirection:'column', gap:18 }}>
+          {/* ── Coluna esquerda ─────────────────────────────────────────── */}
+          <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
 
-              {/* Toggle de modo */}
-              <div>
-                <label style={{ display:'block', fontSize:12, fontWeight:500, color:'#9ca3af', marginBottom:8 }}>
-                  Modo de geração
-                </label>
-                <div style={{ display:'flex', gap:0, borderRadius:10, overflow:'hidden', border:'1px solid rgba(255,255,255,0.08)' }}>
-                  {(['t2i', 'i2i'] as const).map((m, i) => (
-                    <button key={m} type="button" onClick={() => setModo(m)}
-                      style={{
-                        flex:1, padding:'9px 0', fontSize:12, fontWeight:600, cursor:'pointer', border:'none',
-                        borderRight: i === 0 ? '1px solid rgba(255,255,255,0.08)' : 'none',
-                        background: modo === m ? 'rgba(99,102,241,0.25)' : 'rgba(255,255,255,0.03)',
-                        color: modo === m ? '#a5b4fc' : '#6b7280',
-                        transition: 'background .15s, color .15s',
-                      }}>
-                      {m === 't2i' ? 'Texto → Imagem' : 'Imagem → Imagem'}
-                    </button>
-                  ))}
+            {/* PASSO 1 */}
+            <form onSubmit={handleGerarPrompt}>
+              <div className="bento p7" style={{ display:'flex', flexDirection:'column', gap:16 }}>
+
+                {/* Badge passo */}
+                <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                  <span style={{ width:22, height:22, borderRadius:'50%', background:'var(--gradient-primary)',
+                                  display:'grid', placeItems:'center', fontSize:11, fontWeight:700, flexShrink:0 }}>1</span>
+                  <span style={{ fontSize:13, fontWeight:600 }}>Descreva o que você quer gerar</span>
                 </div>
-              </div>
 
-              {/* Zona de upload de referências (só no modo i2i) */}
-              {modo === 'i2i' && (
+                {/* Cliente */}
                 <div>
-                  <label style={{ display:'block', fontSize:12, fontWeight:500, color:'#9ca3af', marginBottom:8 }}>
-                    Imagens de referência
-                    <span style={{ marginLeft:6, fontSize:10, color:'#4b5563' }}>(PNG, JPG — múltiplas)</span>
+                  <label style={{ display:'block', fontSize:12, fontWeight:500, color:'#9ca3af', marginBottom:6 }}>
+                    Cliente <span style={{ color:'#4b5563' }}>(opcional — carrega identidade visual)</span>
                   </label>
+                  <select value={cliente} onChange={e => setCliente(e.target.value)} className="input-glass"
+                    style={{ width:'100%', borderRadius:10, padding:'9px 14px', fontSize:13 }}>
+                    <option value="">Sem cliente específico</option>
+                    {CLIENTES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                  </select>
+                </div>
 
-                  {/* Thumbnails das referências adicionadas */}
-                  {refs.length > 0 && (
-                    <div style={{ display:'flex', flexWrap:'wrap', gap:8, marginBottom:10 }}>
-                      {refs.map((r, i) => (
-                        <div key={i} style={{ position:'relative', width:64, height:64, borderRadius:8,
-                                              overflow:'hidden', border:'1px solid rgba(255,255,255,0.1)', flexShrink:0 }}>
-                          <img src={r.preview} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
-                          <button type="button" onClick={() => removerRef(i)}
-                            style={{
-                              position:'absolute', top:2, right:2, width:18, height:18, borderRadius:'50%',
-                              background:'rgba(0,0,0,0.7)', border:'none', color:'#f87171', cursor:'pointer',
-                              fontSize:11, display:'flex', alignItems:'center', justifyContent:'center', lineHeight:1,
-                            }}>✕</button>
+                {/* Formato */}
+                <div>
+                  <label style={{ display:'block', fontSize:12, fontWeight:500, color:'#9ca3af', marginBottom:6 }}>
+                    Formato de saída
+                  </label>
+                  <select value={formato} onChange={e => setFormato(e.target.value)} className="input-glass"
+                    style={{ width:'100%', borderRadius:10, padding:'9px 14px', fontSize:13 }}>
+                    {FORMATOS_SAIDA.map(f => <option key={f} value={f}>{f}</option>)}
+                  </select>
+                </div>
+
+                {/* Descrição */}
+                <div>
+                  <label style={{ display:'block', fontSize:12, fontWeight:500, color:'#9ca3af', marginBottom:6 }}>
+                    Descrição
+                  </label>
+                  <textarea value={descricao} onChange={e => setDescricao(e.target.value)} rows={4}
+                    placeholder="Ex: Post de lançamento do novo produto, fundo branco minimalista, produto centralizado, luz suave..."
+                    className="input-glass"
+                    style={{ width:'100%', borderRadius:12, padding:'12px 14px', fontSize:13, resize:'vertical' }} />
+                </div>
+
+                <button type="submit" disabled={loadingPrompt} className="btn-primary"
+                  style={{ padding:'11px 20px', borderRadius:12, fontSize:14, border:'none',
+                           display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+                  {loadingPrompt ? (
+                    <><Spinner /> Gerando prompt...</>
+                  ) : '✦ Gerar Prompt'}
+                </button>
+              </div>
+            </form>
+
+            {/* PASSO 2 — aparece após prompt gerado */}
+            {promptPronto && (
+              <form onSubmit={handleGerarImagem}>
+                <div className="bento p7" style={{ display:'flex', flexDirection:'column', gap:16,
+                                                    border:'1px solid rgba(99,102,241,0.25)' }}>
+
+                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                    <span style={{ width:22, height:22, borderRadius:'50%', background:'var(--gradient-primary)',
+                                    display:'grid', placeItems:'center', fontSize:11, fontWeight:700, flexShrink:0 }}>2</span>
+                    <span style={{ fontSize:13, fontWeight:600 }}>Revise o prompt e gere a imagem</span>
+                    {modoDetectado && modoDetectado !== 't2i' && (
+                      <span style={{ marginLeft:'auto', fontSize:10, fontWeight:700, textTransform:'uppercase',
+                                      letterSpacing:'.1em', color:'#818cf8', background:'rgba(99,102,241,0.12)',
+                                      padding:'3px 8px', borderRadius:6 }}>
+                        {modoDetectado}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Prompt editável */}
+                  <div>
+                    <label style={{ display:'block', fontSize:12, fontWeight:500, color:'#9ca3af', marginBottom:6 }}>
+                      Prompt gerado <span style={{ color:'#4b5563' }}>(edite se necessário)</span>
+                    </label>
+                    <textarea value={promptEditavel} onChange={e => setPromptEditavel(e.target.value)} rows={6}
+                      className="input-glass"
+                      style={{ width:'100%', borderRadius:12, padding:'12px 14px', fontSize:12,
+                               fontFamily:'monospace', resize:'vertical', lineHeight:1.6 }} />
+                  </div>
+
+                  {/* Negative prompt (leitura) */}
+                  {negativoGerado && (
+                    <div>
+                      <label style={{ display:'block', fontSize:12, fontWeight:500, color:'#9ca3af', marginBottom:6 }}>
+                        Negative prompt
+                      </label>
+                      <textarea value={negativoGerado} onChange={e => setNegativoGerado(e.target.value)} rows={2}
+                        className="input-glass"
+                        style={{ width:'100%', borderRadius:10, padding:'10px 14px', fontSize:11,
+                                 fontFamily:'monospace', resize:'vertical', color:'#f87171', lineHeight:1.5 }} />
+                    </div>
+                  )}
+
+                  {/* Upload de referências se modo precisar */}
+                  {precisaRef && (
+                    <div>
+                      <label style={{ display:'block', fontSize:12, fontWeight:500, color:'#9ca3af', marginBottom:6 }}>
+                        Imagem de referência
+                        <span style={{ marginLeft:6, fontSize:10, color:'#4b5563' }}>
+                          ({modoDetectado === 'comp' ? 'foto do produto obrigatória' : 'PNG ou JPG'})
+                        </span>
+                      </label>
+                      {refs.length > 0 ? (
+                        <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
+                          {refs.map((r, i) => (
+                            <div key={i} style={{ position:'relative', width:64, height:64, borderRadius:8,
+                                                  overflow:'hidden', border:'1px solid rgba(255,255,255,0.1)' }}>
+                              <img src={r.preview} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                              <button type="button" onClick={() => removerRef(i)}
+                                style={{ position:'absolute', top:2, right:2, width:18, height:18, borderRadius:'50%',
+                                          background:'rgba(0,0,0,0.7)', border:'none', color:'#f87171',
+                                          cursor:'pointer', fontSize:11, display:'grid', placeItems:'center' }}>✕</button>
+                            </div>
+                          ))}
+                          <button type="button" onClick={() => inputFileRef.current?.click()}
+                            style={{ width:64, height:64, borderRadius:8, border:'1px dashed rgba(255,255,255,0.15)',
+                                      background:'rgba(255,255,255,0.03)', color:'#4b5563', cursor:'pointer',
+                                      fontSize:20, display:'grid', placeItems:'center' }}>+</button>
                         </div>
-                      ))}
-                      {/* Botão adicionar mais */}
-                      <button type="button" onClick={() => inputFileRef.current?.click()}
-                        style={{
-                          width:64, height:64, borderRadius:8, border:'1px dashed rgba(255,255,255,0.15)',
-                          background:'rgba(255,255,255,0.03)', color:'#4b5563', cursor:'pointer', fontSize:20,
-                          display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0,
-                        }}>+</button>
+                      ) : (
+                        <div onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+                          onDragLeave={() => setDragOver(false)} onDrop={onDrop}
+                          onClick={() => inputFileRef.current?.click()}
+                          style={{ border: dragOver ? '2px dashed #6366f1' : '2px dashed rgba(255,255,255,0.1)',
+                                    borderRadius:12, padding:'22px 16px', textAlign:'center', cursor:'pointer',
+                                    background: dragOver ? 'rgba(99,102,241,0.06)' : 'rgba(255,255,255,0.02)',
+                                    transition:'all .15s' }}>
+                          <div style={{ fontSize:24, marginBottom:6, opacity:.5 }}>🖼️</div>
+                          <div style={{ fontSize:12, color:'#6b7280' }}>
+                            Arraste ou <span style={{ color:'#818cf8', textDecoration:'underline' }}>clique para selecionar</span>
+                          </div>
+                        </div>
+                      )}
+                      <input ref={inputFileRef} type="file" multiple accept="image/*" style={{ display:'none' }}
+                        onChange={e => e.target.files && adicionarArquivos(e.target.files)} />
                     </div>
                   )}
 
-                  {/* Dropzone (só aparece quando não há refs ainda, ou sempre pequena) */}
-                  {refs.length === 0 && (
-                    <div
-                      onDragOver={e => { e.preventDefault(); setDragOver(true) }}
-                      onDragLeave={() => setDragOver(false)}
-                      onDrop={onDrop}
-                      onClick={() => inputFileRef.current?.click()}
-                      style={{
-                        border: dragOver ? '2px dashed #6366f1' : '2px dashed rgba(255,255,255,0.1)',
-                        borderRadius:12, padding:'28px 16px', textAlign:'center', cursor:'pointer',
-                        background: dragOver ? 'rgba(99,102,241,0.06)' : 'rgba(255,255,255,0.02)',
-                        transition:'all .15s',
-                      }}>
-                      <div style={{ fontSize:28, marginBottom:8, opacity:.5 }}>🖼️</div>
-                      <div style={{ fontSize:12, color:'#6b7280', marginBottom:4 }}>
-                        Arraste imagens aqui ou <span style={{ color:'#818cf8', textDecoration:'underline' }}>clique para selecionar</span>
-                      </div>
-                      <div style={{ fontSize:10, color:'#374151' }}>PNG, JPG · múltiplas imagens aceitas</div>
+                  {erro && (
+                    <div style={{ background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.2)',
+                                  borderRadius:10, padding:'10px 14px', fontSize:13, color:'#f87171' }}>
+                      {erro}
                     </div>
                   )}
 
-                  <input ref={inputFileRef} type="file" multiple accept="image/*" style={{ display:'none' }}
-                    onChange={e => e.target.files && adicionarArquivos(e.target.files)} />
+                  <button type="submit" disabled={loadingImagem} className="btn-primary"
+                    style={{ padding:'11px 20px', borderRadius:12, fontSize:14, border:'none',
+                             display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+                    {loadingImagem ? (
+                      <><Spinner /> Gerando imagem...</>
+                    ) : '🎨 Gerar Imagem'}
+                  </button>
                 </div>
-              )}
+              </form>
+            )}
 
-              {/* Tipo de conteúdo */}
-              <div>
-                <label style={{ display:'block', fontSize:12, fontWeight:500, color:'#9ca3af', marginBottom:8 }}>
-                  Tipo de conteúdo
-                </label>
-                <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
-                  {TIPOS.map(t => (
-                    <button key={t} type="button" onClick={() => setTipo(t)}
-                      className={`chip${tipo===t?' active':''}`}>
-                      {t}
-                    </button>
-                  ))}
-                </div>
+            {/* Erro do passo 1 */}
+            {erro && !promptPronto && (
+              <div style={{ background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.2)',
+                            borderRadius:10, padding:'10px 14px', fontSize:13, color:'#f87171' }}>
+                {erro}
               </div>
+            )}
+          </div>
 
-              {/* Estilo */}
-              <div>
-                <label style={{ display:'block', fontSize:12, fontWeight:500, color:'#9ca3af', marginBottom:8 }}>
-                  Estilo visual
-                </label>
-                <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
-                  {ESTILOS.map(s => (
-                    <button key={s} type="button" onClick={() => setEstilo(s)}
-                      className={`chip${estilo===s?' active':''}`}>
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Formato de saída */}
-              <div>
-                <label style={{ display:'block', fontSize:12, fontWeight:500, color:'#9ca3af', marginBottom:8 }}>
-                  Formato de saída
-                </label>
-                <select value={formato} onChange={e => setFormato(e.target.value)} className="input-glass"
-                  style={{ width:'100%', borderRadius:10, padding:'10px 14px', fontSize:13 }}>
-                  {FORMATOS_SAIDA.map(f => <option key={f} value={f}>{f}</option>)}
-                </select>
-              </div>
-
-              {/* Prompt */}
-              <div>
-                <label style={{ display:'block', fontSize:12, fontWeight:500, color:'#9ca3af', marginBottom:8 }}>
-                  {modo === 'i2i' ? 'Instrução / Transformação' : 'Descrição / Prompt'}
-                </label>
-                <textarea value={prompt} onChange={e => setPrompt(e.target.value)} rows={4}
-                  placeholder={modo === 'i2i'
-                    ? 'Ex: Mantenha a composição mas aplique o estilo minimalista da marca DAXO, fundo neutro e luz suave...'
-                    : 'Ex: Produto de skincare sobre fundo branco minimalista, luz suave lateral, textura premium...'}
-                  className="input-glass"
-                  style={{ width:'100%', borderRadius:12, padding:'12px 14px', fontSize:13, resize:'vertical' }} />
-              </div>
-
-              {erro && (
-                <div style={{ background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.2)',
-                              borderRadius:10, padding:'10px 14px', fontSize:13, color:'#f87171' }}>
-                  {erro}
-                </div>
-              )}
-
-              <button type="submit" disabled={loading} className="btn-primary"
-                style={{ padding:'12px 20px', borderRadius:12, fontSize:14, border:'none',
-                         display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
-                {loading ? (
-                  <>
-                    <span style={{ display:'inline-block', width:14, height:14, border:'2px solid rgba(0,0,0,0.3)',
-                                    borderTop:'2px solid #000', borderRadius:'50%', animation:'spin 0.8s linear infinite' }} />
-                    Gerando...
-                  </>
-                ) : (modo === 'i2i' ? '🎨 Transformar Imagem' : '🎨 Gerar Imagem')}
-              </button>
-            </div>
-          </form>
-
-          {/* Painel direito — resultado */}
+          {/* ── Coluna direita — resultado ──────────────────────────────── */}
           <div className="bento p7" style={{ display:'flex', flexDirection:'column', alignItems:'center',
-                        justifyContent: resultado || loading ? 'flex-start' : 'center', minHeight:400 }}>
-            {!resultado && !loading && (
+                        justifyContent: resultado || loadingImagem || loadingPrompt ? 'flex-start' : 'center',
+                        minHeight:440 }}>
+
+            {!resultado && !loadingImagem && !loadingPrompt && (
               <div style={{ textAlign:'center', color:'#374151' }}>
                 <div style={{ fontSize:48, marginBottom:12, opacity:.3 }}>🖼️</div>
                 <div style={{ fontSize:13 }}>
-                  {modo === 'i2i' && refs.length > 0
-                    ? `${refs.length} referência${refs.length>1?'s':''} carregada${refs.length>1?'s':''}. Descreva a transformação e gere.`
-                    : 'A imagem gerada aparecerá aqui'}
+                  {promptPronto ? 'Prompt pronto. Clique em "Gerar Imagem".' : 'Descreva o que quer criar e gere o prompt.'}
                 </div>
-                {/* Mini preview das referências no painel direito */}
-                {modo === 'i2i' && refs.length > 0 && (
-                  <div style={{ display:'flex', flexWrap:'wrap', gap:6, justifyContent:'center', marginTop:16 }}>
-                    {refs.map((r, i) => (
-                      <img key={i} src={r.preview} alt=""
-                        style={{ width:56, height:56, objectFit:'cover', borderRadius:8, border:'1px solid rgba(255,255,255,0.1)' }} />
-                    ))}
-                  </div>
-                )}
               </div>
             )}
-            {loading && (
-              <div style={{ textAlign:'center', color:'#6b7280', paddingTop:60 }}>
-                <div style={{ fontSize:36, marginBottom:12 }}>✨</div>
-                <div style={{ fontSize:13, marginBottom:4 }}>
-                  {modo === 'i2i' ? 'Transformando imagem...' : 'Gerando imagem...'}
-                </div>
+
+            {loadingPrompt && (
+              <div style={{ textAlign:'center', color:'#6b7280', paddingTop:40 }}>
+                <div style={{ fontSize:32, marginBottom:12 }}>✦</div>
+                <div style={{ fontSize:13, marginBottom:4 }}>Especialista analisando...</div>
+                <div style={{ fontSize:11, color:'#374151' }}>Claude está gerando o prompt otimizado</div>
+              </div>
+            )}
+
+            {loadingImagem && (
+              <div style={{ textAlign:'center', color:'#6b7280', paddingTop:40 }}>
+                <div style={{ fontSize:32, marginBottom:12 }}>✨</div>
+                <div style={{ fontSize:13, marginBottom:4 }}>Gerando imagem...</div>
                 <div style={{ fontSize:11, color:'#374151' }}>Isso pode levar alguns segundos</div>
               </div>
             )}
+
             {resultado && (
               <>
-                {resultado.url ? (
-                  <img
-                    src={resultado.url}
-                    alt="Mídia gerada"
-                    style={{ width:'100%', borderRadius:12, objectFit:'contain', maxHeight:320 }}
-                  />
-                ) : (
-                  <div style={{ color:'#6b7280', fontSize:13, padding:20, textAlign:'center' }}>
-                    Imagem gerada com sucesso mas sem preview disponível.
-                  </div>
-                )}
-
-                {/* Prompt melhorado pelo especialista */}
-                {resultado.promptMelhorado && (
-                  <div style={{
-                    marginTop:14, width:'100%', borderRadius:10,
-                    background:'rgba(99,102,241,0.07)', border:'1px solid rgba(99,102,241,0.2)',
-                    padding:'10px 12px',
-                  }}>
-                    <div style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'.12em',
-                                  color:'#818cf8', marginBottom:6 }}>
-                      Prompt enviado ao GPT-Image-2
-                    </div>
-                    <p style={{ fontSize:11, color:'#a5b4fc', lineHeight:1.6, margin:0, fontFamily:'monospace' }}>
-                      {resultado.promptMelhorado}
-                    </p>
-                  </div>
-                )}
-
-                <div style={{ display:'flex', gap:8, marginTop:12, width:'100%' }}>
+                <img src={resultado.url} alt="Mídia gerada"
+                  style={{ width:'100%', borderRadius:12, objectFit:'contain', maxHeight:380 }} />
+                <div style={{ display:'flex', gap:8, marginTop:14, width:'100%' }}>
                   <button onClick={baixar} className="btn-primary"
                     style={{ flex:1, padding:'10px 16px', borderRadius:10, fontSize:13, border:'none' }}>
                     ↓ Baixar
                   </button>
-                  <button onClick={() => setResultado(null)}
+                  <button onClick={() => { setResultado(null); setPromptPronto(false); setDescricao('');
+                                           setPromptEditavel(''); setNegativoGerado(''); setRefs([]) }}
                     style={{ padding:'10px 16px', borderRadius:10, fontSize:13, cursor:'pointer',
                              border:'1px solid rgba(255,255,255,0.1)', background:'transparent', color:'#6b7280' }}>
-                    Limpar
+                    Nova imagem
                   </button>
                 </div>
               </>
@@ -337,5 +352,12 @@ export default function MidiaPage() {
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
+  )
+}
+
+function Spinner() {
+  return (
+    <span style={{ display:'inline-block', width:13, height:13, border:'2px solid rgba(0,0,0,0.2)',
+                   borderTop:'2px solid #000', borderRadius:'50%', animation:'spin 0.8s linear infinite' }} />
   )
 }
