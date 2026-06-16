@@ -70,6 +70,8 @@ export async function gerarMidia(form: FormData): Promise<{
   sucesso: boolean
   arquivo?: string
   data_url?: string
+  prompt_original?: string
+  prompt_melhorado?: string
   erro?: string
   [key: string]: unknown
 }> {

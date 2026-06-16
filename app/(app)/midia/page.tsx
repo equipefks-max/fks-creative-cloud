@@ -21,7 +21,7 @@ export default function MidiaPage() {
   const [dragOver, setDragOver]   = useState(false)
   const [loading, setLoading]     = useState(false)
   const [erro, setErro]           = useState('')
-  const [resultado, setResultado] = useState<{ url?: string; tipo: string } | null>(null)
+  const [resultado, setResultado] = useState<{ url?: string; tipo: string; promptMelhorado?: string } | null>(null)
 
   const inputFileRef = useRef<HTMLInputElement>(null)
 
@@ -52,8 +52,8 @@ export default function MidiaPage() {
     try {
       const fd = new FormData()
       fd.append('modo', modo)
-      const promptFinal = `${prompt.trim()}. Estilo: ${estilo}. Tipo: ${tipo}. Formato: ${formato}.`
-      fd.append('prompt', promptFinal)
+      fd.append('prompt', `${prompt.trim()}. Estilo: ${estilo}. Tipo: ${tipo}.`)
+      fd.append('formato', formato)
       if (modo === 'i2i') {
         refs.forEach(r => fd.append('referencias', r.file))
       }
@@ -61,7 +61,7 @@ export default function MidiaPage() {
       if (!res.sucesso || !res.data_url) {
         throw new Error((res as any).erro || 'Servidor não retornou imagem')
       }
-      setResultado({ url: res.data_url, tipo })
+      setResultado({ url: res.data_url, tipo, promptMelhorado: res.prompt_melhorado })
     } catch (err: any) {
       setErro(err.message || 'Erro ao gerar mídia')
     } finally {
@@ -293,14 +293,32 @@ export default function MidiaPage() {
                   <img
                     src={resultado.url}
                     alt="Mídia gerada"
-                    style={{ width:'100%', borderRadius:12, objectFit:'contain', maxHeight:360 }}
+                    style={{ width:'100%', borderRadius:12, objectFit:'contain', maxHeight:320 }}
                   />
                 ) : (
                   <div style={{ color:'#6b7280', fontSize:13, padding:20, textAlign:'center' }}>
                     Imagem gerada com sucesso mas sem preview disponível.
                   </div>
                 )}
-                <div style={{ display:'flex', gap:8, marginTop:16, width:'100%' }}>
+
+                {/* Prompt melhorado pelo especialista */}
+                {resultado.promptMelhorado && (
+                  <div style={{
+                    marginTop:14, width:'100%', borderRadius:10,
+                    background:'rgba(99,102,241,0.07)', border:'1px solid rgba(99,102,241,0.2)',
+                    padding:'10px 12px',
+                  }}>
+                    <div style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'.12em',
+                                  color:'#818cf8', marginBottom:6 }}>
+                      Prompt enviado ao GPT-Image-2
+                    </div>
+                    <p style={{ fontSize:11, color:'#a5b4fc', lineHeight:1.6, margin:0, fontFamily:'monospace' }}>
+                      {resultado.promptMelhorado}
+                    </p>
+                  </div>
+                )}
+
+                <div style={{ display:'flex', gap:8, marginTop:12, width:'100%' }}>
                   <button onClick={baixar} className="btn-primary"
                     style={{ flex:1, padding:'10px 16px', borderRadius:10, fontSize:13, border:'none' }}>
                     ↓ Baixar
